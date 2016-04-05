@@ -11,24 +11,29 @@ Just by **putting** it in **std::cout** or **std::wcout** and you're ready to go
 You can even preserve original color and restore it later.
 
 What you can do with this library
+but just to make life easier, declare alias for namespace
+```cpp
+namespace con = ConsoleColor;
+```
+
 - Preserve original CMD color.
 ```cpp
 // all you have todo just declare it, and you're have the original color
-ConColor OriginalColor;
+con::Color OriginalColor;
 ```
 - Using color command as seen in CMD as parameter
 ```cpp
 // setting up green on a black background using parameter
 // the parameter is in hex 
-std::cout << ConColor(0x0A) << "Green text on Black background" << std::endl;
+std::cout << con::Color(0x0A) << "Green text on Black background" << std::endl;
 ```
 - Using predefined enumeration provided by the library
 ```cpp
-std::cout << ConColor(FG_HIRED, BG_BLACK) << "Red text on Black background" << std::endl;
+std::cout << con::Color(con::color::HiRed, con::color::Black) << "Red text on Black background" << std::endl;
 // or you can use the previous color
-std::cout << ConColor(FG_HIRED, BG_PREVIOUS) << "Red text on the same background as previous" << std::endl;
+std::cout << con::Color(con::color::HiRed, con::color::Previous) << "Red text on the same background as previous" << std::endl;
 // the same also goes for the foreground color
-std::cout << ConColor(FG_PREVOIUS, BG_BLACK) << "Red text on the same background as previous" << std::endl;
+std::cout << ConColor(con::color::Previous, con::color::Black) << "Red text on the same background as previous" << std::endl;
 ```
 - Restore any previously saved color
 ```cpp
@@ -39,17 +44,14 @@ here is the complete example:
 ```cpp
 int main()
 {
-    std::cout << " CMD Color demo."<< std::endl;
-
+    namespace con = ConsoleColor;
+    std::cout << " CMD Color demo." << std::endl;
     std::cout << " Saving original color." << std::endl;
-    ConColor OriginalColor;
-
-    std::cout << ConColor(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
-    std::cout << ConColor(FG_HIRED, BG_BLACK) << " Red on Black." << std::endl;
-    std::cout << ConColor(FG_HIMAGENTA, BG_BLACK) << " Magenta on Black." << std::endl;
-
+    con::Color OriginalColor;
+    std::cout << con::Color(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
+    std::cout << con::Color(con::color::HiRed, con::color::Black) << " Red on Black." << std::endl;
+    std::cout << con::Color(con::color::HiMagenta, con::color::Previous) << " Magenta on Black." << std::endl;
     std::cout << OriginalColor << " Resetting the color back." << std::endl;
-
     return 0;
 }
 ```
