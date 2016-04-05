@@ -3,234 +3,233 @@
 #include <Windows.h>
 #include <iostream>
 
-enum FG_COLOR
+namespace ConsoleColor
 {
-    FG_BLACK,
-    FG_GRAY,
-
-    FG_LORED,
-    FG_LOGREEN,
-    FG_LOBLUE,
-    FG_LOCYAN,
-    FG_LOMAGENTA,
-    FG_LOYELLOW,
-    FG_LOWHITE,
-
-    FG_HIRED,
-    FG_HIGREEN,
-    FG_HIBLUE,
-    FG_HICYAN,
-    FG_HIMAGENTA,
-    FG_HIYELLOW,
-    FG_HIWHITE,
-
-    FG_PREVIOUS /*not changing the color*/
-};
-
-enum BG_COLOR
+enum class color : char
 {
-    BG_BLACK,
-    BG_GRAY,
-
-    BG_LORED,
-    BG_LOGREEN,
-    BG_LOBLUE,
-    BG_LOCYAN,
-    BG_LOMAGENTA,
-    BG_LOYELLOW,
-    BG_LOWHITE,
-
-    BG_HIRED,
-    BG_HIGREEN,
-    BG_HIBLUE,
-    BG_HICYAN,
-    BG_HIMAGENTA,
-    BG_HIYELLOW,
-    BG_HIWHITE,
-
-    BG_PREVIOUS /*not changing the color*/
+    Black,
+    Gray,
+    LoRed,
+    LoGreen,
+    LoBlue,
+    LoCyan,
+    LoMagenta,
+    LoYellow,
+    LoWhite,
+    HiRed,
+    HiGreen,
+    HiBlue,
+    HiCyan,
+    HiMagenta,
+    HiYellow,
+    HiWhite,
+    Previous /*keep previous color*/
 };
-
+}
 #define FOREGROUND_MASK (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY)
 #define BACKGROUND_MASK (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_INTENSITY)
-class ConColor
+
+#define PREV_COLOR 0x0100
+#define DELAY_CONV 0xFF00
+namespace ConsoleColor
 {
-    WORD     m_wPackedColor;
-    HANDLE   m_hConsole;
+class Color
+{
 public:
-    ConColor(FG_COLOR ForeGround, BG_COLOR Background)
+    Color()
     {
-        m_wPackedColor = _ConvertColor(ForeGround, Background);
-        m_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        _Init();
+        m_PackedColor = _PrevColor();
     }
-    ConColor(WORD wPackedColor)
-        : m_wPackedColor(wPackedColor)
+    Color(color foreground, color background)
     {
-        m_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        _Init();
+        m_PackedColor = DELAY_CONV;
+        m_ColorPair.set(foreground, background);
     }
-    ConColor()
+    Color(WORD packedColor)
     {
-        m_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        _GetConsoleColor();
+        _Init();
+        m_PackedColor = packedColor  & (BACKGROUND_MASK | FOREGROUND_MASK);
     }
-    ~ConColor()
-    {
+    ~Color() {}
 
-    }
-
-    // the magic is done here.
+    // the magic is here.
     template <typename _Elem, typename _Traits> inline friend
-        std::basic_ostream<_Elem,_Traits>& operator<< (
-        std::basic_ostream<_Elem,_Traits>& _Ostr,
-        const ConColor& manip )
+        std::basic_ostream<_Elem, _Traits>& operator<< (
+            std::basic_ostream<_Elem, _Traits>& _Ostr,
+            const Color& manip)
     {
         // flush anything in buffer
         _Ostr.flush();
         // set the color
-        _SetColor(&manip);
+        _SetColor(manip);
         return _Ostr;
     };
+    static const Color fg(color foreground)
+    {
+        return Color(foreground, color::Previous);
 
+    }
+    static const Color bg(color background)
+    {
+        return Color(color::Previous, background);
+    }
 private:
-    VOID _GetConsoleColor()
+    HANDLE m_hConsole;
+    struct ColorPair
     {
-        CONSOLE_SCREEN_BUFFER_INFO ConInfo;
-        GetConsoleScreenBufferInfo(m_hConsole, &ConInfo);
-        m_wPackedColor = (ConInfo.wAttributes & ((BACKGROUND_MASK) | (FOREGROUND_MASK)));
-    }
-    WORD _ConvertColor(FG_COLOR ForeGround, BG_COLOR Background)
-    {
-        WORD wColor = 0;
-        switch ( Background )
+        color m_fg;
+        color m_bg;
+        void set(color fg, color bg)
         {
-        /*case BG_BLACK:*/
-        case BG_PREVIOUS:
-            wColor |= BACKGROUND_MASK;
-            break;
-        case BG_GRAY:
-            wColor |= BACKGROUND_INTENSITY;
-            break;
-
-        case BG_HIRED:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LORED:
-            wColor |= BACKGROUND_RED;
-            break;
-
-        case BG_HIGREEN:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOGREEN:
-            wColor |= BACKGROUND_GREEN;
-            break;
-
-        case BG_HIBLUE:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOBLUE:
-            wColor |= BACKGROUND_BLUE;
-            break;
-
-        case BG_HICYAN:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOCYAN:
-            wColor |= (BACKGROUND_GREEN | BACKGROUND_BLUE);
-            break;
-
-        case BG_HIMAGENTA:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOMAGENTA:
-            wColor |= (BACKGROUND_RED | BACKGROUND_BLUE);
-            break;
-
-        case BG_HIYELLOW:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOYELLOW:
-            wColor |= (BACKGROUND_RED | BACKGROUND_GREEN);
-            break;
-
-        case BG_HIWHITE:
-            wColor |= BACKGROUND_INTENSITY;
-        case BG_LOWHITE:
-            wColor |= (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED);
-            break;
+            m_fg = fg;
+            m_bg = bg;
         }
-
-        switch ( ForeGround )
-        {
-        /*case FG_BLACK:*/
-        case FG_PREVIOUS:
-            wColor |= FOREGROUND_MASK;
-            break;
-        case FG_GRAY:
-            wColor |= FOREGROUND_INTENSITY;
-            break;
-
-        case FG_HIRED:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LORED:
-            wColor |= FOREGROUND_RED;
-            break;
-
-        case FG_HIGREEN:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOGREEN:
-            wColor |= FOREGROUND_GREEN;
-            break;
-
-        case FG_HIBLUE:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOBLUE:
-            wColor |= FOREGROUND_BLUE;
-            break;
-
-        case FG_HICYAN:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOCYAN:
-            wColor |= (FOREGROUND_BLUE | FOREGROUND_GREEN);
-            break;
-
-        case FG_HIMAGENTA:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOMAGENTA:
-            wColor |= (FOREGROUND_RED | FOREGROUND_BLUE);
-            break;
-
-        case FG_HIYELLOW:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOYELLOW:
-            wColor |= (FOREGROUND_RED | FOREGROUND_GREEN);
-            break;
-
-        case FG_HIWHITE:
-            wColor |= FOREGROUND_INTENSITY;
-        case FG_LOWHITE:
-            wColor |= (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-            break;
-        }
-        return wColor;
-    }
-
-    static void _SetColor(const ConColor* manip)
+        color fg() { return m_fg; }
+        color bg() { return m_bg; }
+    };
+    union
     {
-        ConColor* pThis = const_cast<ConColor*>(manip);
-        SetConsoleTextAttribute(pThis->m_hConsole, pThis->m_wPackedColor);
+        WORD  m_PrevColor;
+        ColorPair m_ColorPair;
+    };
+    WORD   m_PackedColor;
+
+    void _Init()
+    {
+        m_PrevColor = PREV_COLOR;
+        m_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    }
+    WORD _PrevColor()
+    {
+        if (m_PrevColor == PREV_COLOR)
+        {
+            CONSOLE_SCREEN_BUFFER_INFO ConInfo = { 0 };
+            GetConsoleScreenBufferInfo(m_hConsole, &ConInfo);
+            m_PrevColor = (ConInfo.wAttributes & ((BACKGROUND_MASK) | (FOREGROUND_MASK)));
+        }
+        return m_PrevColor;
+    }
+    void _PreProcess() const
+    {
+#define _THIS(x) const_cast<Color*>(this)->x
+        if (m_PackedColor == DELAY_CONV)
+            _THIS(m_PackedColor) = _THIS(_Convert(_THIS(m_ColorPair).fg(), _THIS(m_ColorPair).bg()));
+#undef _THIS
+    }
+    WORD _Convert(color foreground, color background)
+    {
+        if ((foreground == color::Previous) && (background == color::Previous))
+            return PREV_COLOR;
+
+        if (m_PackedColor == DELAY_CONV)
+            m_PrevColor = PREV_COLOR;
+
+        auto fg = _Convert(foreground);
+        if (fg == PREV_COLOR)
+            fg = (_PrevColor() & FOREGROUND_MASK);
+
+        auto bg = _Convert(background);
+        if (bg == PREV_COLOR)
+            bg = (_PrevColor() & BACKGROUND_MASK);
+        else
+            bg <<= 4;
+
+        return (fg | bg);
+    }
+    static WORD _Convert(color Color)
+    {
+        WORD PackedColor = 0;
+        switch (Color)
+        {
+            case color::Black:
+                break;
+            case color::LoRed:
+                PackedColor = FOREGROUND_RED;
+                break;
+            case color::LoGreen:
+                PackedColor = FOREGROUND_GREEN;
+                break;
+            case color::LoBlue:
+                PackedColor = FOREGROUND_BLUE;
+                break;
+            case color::LoCyan:
+                PackedColor = FOREGROUND_BLUE | FOREGROUND_GREEN;
+                break;
+            case color::LoMagenta:
+                PackedColor = FOREGROUND_RED | FOREGROUND_BLUE;
+                break;
+            case color::LoYellow:
+                PackedColor = FOREGROUND_RED | FOREGROUND_GREEN;
+                break;
+            case color::LoWhite:
+                PackedColor = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
+                break;
+
+            case color::Gray:
+            case color::HiRed:
+            case color::HiGreen:
+            case color::HiBlue:
+            case color::HiCyan:
+            case color::HiMagenta:
+            case color::HiYellow:
+            case color::HiWhite:
+                PackedColor |= FOREGROUND_INTENSITY;
+                PackedColor |= _Convert(_LoPart(Color));
+                break;
+
+            case color::Previous:
+                PackedColor = PREV_COLOR;
+                break;
+        }
+        return PackedColor;
+    }
+    static color _LoPart(color Color)
+    {
+        switch (Color)
+        {
+            case color::Gray:
+                return color::Black;
+            case color::HiRed:
+                return color::LoRed;
+            case color::HiGreen:
+                return color::LoGreen;
+            case color::HiBlue:
+                return color::LoBlue;
+            case color::HiCyan:
+                return color::LoCyan;
+            case color::HiMagenta:
+                return color::LoMagenta;
+            case color::HiYellow:
+                return color::LoYellow;
+            case color::HiWhite:
+                return color::LoWhite;
+        }
+        return Color;
+    }
+    static const void _SetColor(const Color& manip)
+    {
+        manip._PreProcess();
+        if (manip.m_PackedColor != PREV_COLOR)
+            SetConsoleTextAttribute(manip.m_hConsole, manip.m_PackedColor);
     }
 };
+}
+#endif // __CONSOLE_COLOR_H__
 
 /*
+how to use
 int main()
 {
-    std::cout << " CMD Color demo."<< std::endl;
-
+    namespace con = ConsoleColor;
+    std::cout << " CMD Color demo." << std::endl;
     std::cout << " Saving original color." << std::endl;
-    ConColor OriginalColor;
-
-    std::cout << ConColor(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
-    std::cout << ConColor(FG_HIRED, BG_BLACK) << " Red on Black." << std::endl;
-    std::cout << ConColor(FG_HIMAGENTA, BG_BLACK) << " Magenta on Black." << std::endl;
-
+    con::Color OriginalColor;
+    std::cout << con::Color(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
+    std::cout << con::Color(con::color::HiRed, con::color::Black) << " Red on Black." << std::endl;
+    std::cout << con::Color(con::color::HiMagenta, con::color::Previous) << " Magenta on Black." << std::endl;
     std::cout << OriginalColor << " Resetting the color back." << std::endl;
-
     return 0;
 }
 */
-#endif
