@@ -5,7 +5,7 @@
 
 namespace ConsoleColor
 {
-enum class color : char
+enum color : char
 {
     Black,
     Gray,
@@ -58,7 +58,7 @@ public:
     template <typename _Elem, typename _Traits> inline friend
         std::basic_ostream<_Elem, _Traits>& operator<< (
             std::basic_ostream<_Elem, _Traits>& _Ostr,
-            const Color& manip)
+            Color& manip)
     {
         // flush anything in buffer
         _Ostr.flush();
@@ -66,12 +66,12 @@ public:
         _SetColor(manip);
         return _Ostr;
     };
-    static const Color fg(color foreground)
+    static Color fg(color foreground)
     {
         return Color(foreground, color::Previous);
 
     }
-    static const Color bg(color background)
+    static Color bg(color background)
     {
         return Color(color::Previous, background);
     }
@@ -111,16 +111,15 @@ private:
         }
         return m_PrevColor;
     }
-    void _PreProcess() const
+    void _PreProcess()
     {
-#define _THIS(x) const_cast<Color*>(this)->x
         if (m_PackedColor == DELAY_CONV)
-            _THIS(m_PackedColor) = _THIS(_Convert(_THIS(m_ColorPair).fg(), _THIS(m_ColorPair).bg()));
-#undef _THIS
+            m_PackedColor = _Convert(m_ColorPair.fg(), m_ColorPair.bg());
     }
     WORD _Convert(color foreground, color background)
     {
-        if ((foreground == color::Previous) && (background == color::Previous))
+        if ((foreground == color::Previous)
+            && (background == color::Previous))
             return PREV_COLOR;
 
         if (m_PackedColor == DELAY_CONV)
@@ -208,7 +207,7 @@ private:
         }
         return Color;
     }
-    static const void _SetColor(const Color& manip)
+    static const void _SetColor(Color& manip)
     {
         manip._PreProcess();
         if (manip.m_PackedColor != PREV_COLOR)
@@ -222,14 +221,14 @@ private:
 how to use
 int main()
 {
-    namespace con = ConsoleColor;
-    std::cout << " CMD Color demo." << std::endl;
-    std::cout << " Saving original color." << std::endl;
-    con::Color OriginalColor;
-    std::cout << con::Color(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
-    std::cout << con::Color(con::color::HiRed, con::color::Black) << " Red on Black." << std::endl;
-    std::cout << con::Color(con::color::HiMagenta, con::color::Previous) << " Magenta on Black." << std::endl;
-    std::cout << OriginalColor << " Resetting the color back." << std::endl;
-    return 0;
+namespace con = ConsoleColor;
+std::cout << " CMD Color demo." << std::endl;
+std::cout << " Saving original color." << std::endl;
+con::Color OriginalColor;
+std::cout << con::Color(0x0A) << " Green on Black; using the same as color command parameter in CMD." << std::endl;
+std::cout << con::Color(con::HiRed, con::Black) << " Red on Black." << std::endl;
+std::cout << con::Color(con::HiMagenta, con::Previous) << " Magenta on Black." << std::endl;
+std::cout << OriginalColor << " Resetting the color back." << std::endl;
+return 0;
 }
 */
